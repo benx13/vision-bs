@@ -1,6 +1,7 @@
 import pygame
 import math
 import cv2
+
 import numpy as np
 
 pygame.init()
@@ -18,7 +19,7 @@ LIVES_FONT = pygame.font.SysFont("comicsans", 40)
 
 
 class Paddle:
-    VEL = 5
+    VEL = 0
 
     def __init__(self, x, y, width, height, color):
         self.x = x
@@ -33,6 +34,7 @@ class Paddle:
 
     def move(self, direction=1):
         self.x = self.x + self.VEL * direction
+        # print(self.x)
 
 
 class Ball:
@@ -189,7 +191,7 @@ def main():
 
     #cv controller
 
-    cap = cv2.VideoCapture('/home/benx13/code/tp_vis/Vision_camera_brick_breaker/test.webm')
+    cap = cv2.VideoCapture(0)
     oldx = 250
 
 
@@ -209,12 +211,12 @@ def main():
 
         ret, frame = cap.read()
         newx, hist = get_argmax(frame)
-        #print("newx=", newx)
-        #cv2.imshow('Frame',frame)
+        print("newx=", newx)
+        cv2.imshow('Frame',frame)
 
         if(newx != oldx):
             step = math.floor((newx-oldx)*(hist.shape[0]/WIDTH))
-            #print("step", step)
+            print("step", step)
             paddle.move()
 
             oldx = newx
@@ -255,8 +257,8 @@ def main():
             display_text("You Won!")
 
         draw(win, paddle, ball, bricks, lives)
-        #if cv2.waitKey(4) & 0xFF == ord('q'):
-        #    break
+        if cv2.waitKey(1/60) & 0xFF == ord('q'):
+            break
 
 
     pygame.quit()
