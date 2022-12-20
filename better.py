@@ -2,11 +2,38 @@ import cv2
 import numpy as np
 from random import randint   
 
+INDEX2COLOR_RANGE = {0:[(80, 130, 80),(150, 255, 255)],
+                     1:[(50, 100, 100), (110, 220, 255)],
+                     2:[(100, 150, 150), (180, 255, 255)]}
+INDEX2COLOR = {0:'blue', 1:'green', 2:'red'}
+
 WALL_X = 1280
-PADDLE_SIZE = 50
+PADDLE_SIZE = 25
 BALL_VELOCITY = 5
+COLOR = 0
+TRACK = 0
+
+def onpaddlebar(x):
+    global PADDLE_SIZE
+    PADDLE_SIZE = x
+
+def onballvelocity(x):
+    global BALL_VELOCITY
+    BALL_VELOCITY = x
+
+def oncolor(x):
+    global COLOR
+    COLOR = x
+
+def ontrack(x):
+    global TRACK
+    TRACK = x
 
 cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
+cv2.createTrackbar('Paddle ', 'frame' , 50, 300, onpaddlebar)
+cv2.createTrackbar('Speed ', 'frame' , 5, 30, onballvelocity)
+cv2.createTrackbar('Color-Face', 'frame', 0, 1, ontrack)
+cv2.createTrackbar('B - G - R ', 'frame', 0, 2, oncolor)
 
 face_cascade_name = cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml'
 face_cascade = cv2.CascadeClassifier()
@@ -49,28 +76,41 @@ def game():
         
         frame = cv2.resize(frame, (1280, 720))
         
-        hsv = cv2.cvtColor( frame ,cv2.COLOR_BGR2HSV ) 
-        frame = cv2.flip(frame, 1)
+        if(TRACK == 0):
+            hsv = cv2.cvtColor( frame ,cv2.COLOR_BGR2HSV ) 
+            frame = cv2.flip(frame, 1)
 
-        lower, upper = (80, 130, 80), (150, 255, 255)
-        
-        mask = cv2.inRange(hsv, lower, upper) 
+            lower = np.array(INDEX2COLOR_RANGE[COLOR][0])
+            upper = np.array(INDEX2COLOR_RANGE[COLOR][1])        
+            
+            mask = cv2.inRange(hsv, lower, upper) 
 
-        kernel = np.ones((5, 5), np.uint8 )
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=30)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=30)
+            kernel = np.ones((5, 5), np.uint8 )
+            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=30)
+            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=30)
 
-        contours, _ = cv2.findContours( mask ,cv2.RETR_EXTERNAL ,cv2.CHAIN_APPROX_SIMPLE )
-        
-        if not contours:
-            cv2.putText(frame, "Hold a blue object in front of the camera to play", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-        else:
-            big_countour = max(contours, key=cv2.contourArea)
-            x, y, w, h = cv2.boundingRect(big_countour)
-            game_image = cv2.rectangle( frame,( WALL_X-(paddle_x-PADDLE_SIZE) ,paddle_y ), ( WALL_X-(paddle_x+PADDLE_SIZE) ,paddle_y+10 ), ( 255 ,255 ,255 ), -1 )
-            cv2.rectangle(frame,(WALL_X-x-w,y+h), (WALL_X-x,y),(255, 255, 255) ,2)
-            paddle_x = int((x+(w/2)))
-        
+            contours, _ = cv2.findContours( mask ,cv2.RETR_EXTERNAL ,cv2.CHAIN_APPROX_SIMPLE )
+            
+            if not contours:
+                cv2.putText(frame, "Hold a "+INDEX2COLOR[COLOR]+" object in front of the camera to play", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            else:
+                big_countour = max(contours, key=cv2.contourArea)
+                x, y, w, h = cv2.boundingRect(big_countour)
+                game_image = cv2.rectangle( frame,( WALL_X-(paddle_x-PADDLE_SIZE) ,paddle_y ), ( WALL_X-(paddle_x+PADDLE_SIZE) ,paddle_y+10 ), ( 255 ,255 ,255 ), -1 )
+                cv2.rectangle(frame,(WALL_X-x-w,y+h), (WALL_X-x,y),(255, 255, 255) ,2)
+                paddle_x = int((x+(w/2)))
+        if(TRACK == 1):
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frame = cv2.flip(frame, 1)
+            faces = face_cascade.detectMultiScale(gray, 4, 3)
+            if faces == ():
+                cv2.putText(frame, "Hold a face in front of the camera to play", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            else:
+                largest_face = max(faces, key=lambda x: x[2] * x[3])
+                x, y, w, h = largest_face
+                game_image = cv2.rectangle( frame,( WALL_X-(paddle_x-PADDLE_SIZE) ,paddle_y ), ( WALL_X-(paddle_x+PADDLE_SIZE) ,paddle_y+10 ), ( 255 ,255 ,255 ), -1 )
+                cv2.rectangle(frame, (WALL_X-x-w,y+h), (WALL_X-x,y), (255, 255, 255), 2) 
+                paddle_x = int((x+(w/2)))
         ball_x1 = ball_x1 + ball_dx
         ball_y1 = ball_y1 + ball_dy
         ball_y2 = ball_y2 + ball_dy
